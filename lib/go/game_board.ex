@@ -5,7 +5,11 @@ defmodule Go.GameBoard do
   """
   alias Go.GameBoard
 
-  @type t :: %GameBoard{positions: list(), current_color: atom(), captures: %{black: integer(), white: integer()}}
+  @type t :: %GameBoard{
+          positions: list(),
+          current_color: atom(),
+          captures: %{black: integer(), white: integer()}
+        }
 
   @doc """
   Positions - the *positions* attribute is a list of positions on the board. Initially,
@@ -23,7 +27,75 @@ defmodule Go.GameBoard do
   *captures* list is incremented for the captured stone's color.
   """
   @spec __struct__() :: GameBoard.t()
-  defstruct positions: Enum.map(1..81, fn _ -> nil end), current_color: :black, captures: %{black: 0, white: 0}
+  defstruct positions: Enum.map(1..81, fn _ -> nil end),
+            current_color: :black,
+            captures: %{black: 0, white: 0}
+
+  @doc """
+  Validates a potential move by trying it on the current state, and evaluating
+  the result.
+
+  The `legality_move?/2` function does two checks to make sure a move is legal.
+  First, it checks if the position in the current state is empty, making sure there
+  position a new stone is placed on is empty.
+
+    iex> GameBoard.legality_move?(%GameBoard{positions: [nil, nil, nil, nil]}, 0)
+    true
+    iex> GameBoard.legality_move?(%GameBoard{positions: [:black, nil, nil, nil]}, 0)
+    false
+
+  The next check makes sure the position has liberties for the placed stone,
+  meaning the stone can be placed there with at least one liberty, or part of a
+  group that has at least one liberty.
+
+  To determine if a newly placed stone will have liberties, `legality_move?/2` uses the
+  `place_on_board/2` function to try placing a stone on the position that's being
+  validated. Since placing a stone will remove any stones without liberties
+  from the board, it checks if the stone is still there after placing it. If it
+  is, the move is legal.
+
+    iex> GameBoard.legality_move?(%GameBoard{positions: [nil, :black, :black, nil], current: :black}, 0)
+    true
+    iex> GameBoard.legality_move?(%GameBoard{positions: [nil, :white, :white, nil], current: :black}, 0)
+    false
+
+  Because the `place_on_board/2` function captures enemy stones first, moves on places
+  that don't have any liberties but gain them by capturing the opponent's
+  stones are legal as well.
+
+    iex> GameBoard.legality_move?(
+    ...>   %GameBoard{
+    ...>     positions: [
+    ...>       nil,    :black, :white,
+    ...>       :black, :white, nil,
+    ...>       :white, nil,    nil
+    ...>     ],
+    ...>     current: :white
+    ...>   },
+    ...> 0)
+    true
+
+    iex> GameBoard.legality_move?(
+    ...>   %GameBoard{
+    ...>     positions: [
+    ...>       nil,    :black, :white,
+    ...>       :black, :white, nil,
+    ...>       :white, nil,    nil
+    ...>     ],
+    ...>     current: :black
+    ...>   },
+    ...> 0)
+    false
+  """
+  @spec legality_move?(GameBoard.t(), integer()) :: boolean()
+  def legality_move?(
+        %GameBoard{positions: positions, current_color: current_color} = state,
+        index
+      ) do
+    %GameBoard{positions: tentative_positions} = GameBoard.place_on_board(state, index)
+
+    Enum.at(positions, index) == nil and Enum.at(tentative_positions, index) == current_color
+  end
 
   @doc """
   Places a new stone on the board, captures any surrounded stones, and swaps
@@ -96,8 +168,12 @@ defmodule Go.GameBoard do
         captures: %{black: 0, white: 0}
       }
   """
-  @spec place_on_board(GameBoard.t(), integer()) :: map()
-  def place_on_board(%GameBoard{positions: positions, current_color: current_color, captures: captures} = state, index) do
+  @spec place_on_board(GameBoard.t(), integer()) :: GameBoard.t()
+  def place_on_board(
+        %GameBoard{positions: positions, current_color: current_color, captures: captures} =
+          state,
+        index
+      ) do
     opponent_color = get_opponent_color(current_color)
 
     changes_positions = List.replace_at(positions, index, current_color)
@@ -125,14 +201,14 @@ defmodule Go.GameBoard do
     positions
     |> Enum.with_index()
     |> Enum.map_reduce(0, fn {value, index}, captures ->
-      case {value, is_has_liberties(positions, index, color)} do
+      case {value, has_liberties?(positions, index, color)} do
         {^color, false} -> {nil, captures + 1}
         {_, _} -> {value, captures}
       end
     end)
   end
 
-  defp is_has_liberties(positions, index, color, checked \\ []) do
+  defp has_liberties?(positions, index, color, checked \\ []) do
     size =
       positions
       |> length()
@@ -144,7 +220,7 @@ defmodule Go.GameBoard do
     |> Enum.reject(&(&1 in checked))
     |> Enum.any?(fn liberty ->
       case Enum.at(positions, liberty) do
-        ^color -> is_has_liberties(positions, liberty, color, [index | checked])
+        ^color -> has_liberties?(positions, liberty, color, [index | checked])
         nil -> true
         _ -> false
       end

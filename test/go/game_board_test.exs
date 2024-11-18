@@ -18,55 +18,100 @@ defmodule Go.GameBoardTest do
 
   describe "place_on_board/2" do
     test "place stone on empty board" do
-      result = GameBoard.place_on_board(%GameBoard{positions: ~w{nil nil nil nil}a, current_color: :black}, 0)
+      result =
+        GameBoard.place_on_board(
+          %GameBoard{positions: ~w{nil nil nil nil}a, current_color: :black},
+          0
+        )
 
       assert %GameBoard{
-        positions: [:black, nil, nil, nil],
-        current_color: :white,
-        captures: %{black: 0, white: 0}
-      } == result
+               positions: [:black, nil, nil, nil],
+               current_color: :white,
+               captures: %{black: 0, white: 0}
+             } == result
     end
 
     test "if place a stone without liberties board do not change and current color dont switch" do
-      result = GameBoard.place_on_board(%GameBoard{positions: ~w{nil black black nil}a, current_color: :white}, 0)
+      result =
+        GameBoard.place_on_board(
+          %GameBoard{positions: ~w{nil black black nil}a, current_color: :white},
+          0
+        )
 
       assert %GameBoard{
-        positions: [nil, :black, :black, nil],
-        current_color: :white,
-        captures: %{black: 0, white: 0}
-      } == result
+               positions: [nil, :black, :black, nil],
+               current_color: :white,
+               captures: %{black: 0, white: 0}
+             } == result
     end
 
     test "removes an opponent's stone, count captures and change board position list" do
-      result = GameBoard.place_on_board(%GameBoard{positions: ~w{white black nil nil}a, current_color: :black}, 2)
+      result =
+        GameBoard.place_on_board(
+          %GameBoard{positions: ~w{white black nil nil}a, current_color: :black},
+          2
+        )
 
       assert %GameBoard{
-        positions: [nil, :black, :black, nil],
-        current_color: :white,
-        captures: %{black: 0, white: 1}
-      } == result
+               positions: [nil, :black, :black, nil],
+               current_color: :white,
+               captures: %{black: 0, white: 1}
+             } == result
     end
 
     test "removes an opponent's group, count captures and change board position list" do
-      state = %GameBoard{positions: ~w{white white nil black black nil nil nil nil}a, current_color: :black}
+      state = %GameBoard{
+        positions: ~w{white white nil black black nil nil nil nil}a,
+        current_color: :black
+      }
+
       result = GameBoard.place_on_board(state, 2)
 
       assert %GameBoard{
-        positions: [nil, nil, :black, :black, :black, nil, nil, nil, nil],
-        current_color: :white,
-        captures: %{black: 0, white: 2}
-      } == result
+               positions: [nil, nil, :black, :black, :black, nil, nil, nil, nil],
+               current_color: :white,
+               captures: %{black: 0, white: 2}
+             } == result
     end
 
     test "removes a group and gains liberties, count captures and change board position list" do
-      state = %GameBoard{positions: ~w{nil black white black white nil white nil nil}a, current_color: :white}
+      state = %GameBoard{
+        positions: ~w{nil black white black white nil white nil nil}a,
+        current_color: :white
+      }
+
       result = GameBoard.place_on_board(state, 0)
 
       assert %GameBoard{
-        positions: [:white, nil, :white, nil, :white, nil, :white, nil, nil],
-        current_color: :black,
-        captures: %{black: 2, white: 0}
-      } == result
+               positions: [:white, nil, :white, nil, :white, nil, :white, nil, nil],
+               current_color: :black,
+               captures: %{black: 2, white: 0}
+             } == result
+    end
+  end
+
+  describe "legality_move?/2" do
+    test "is move legal when placing a stone on an empty board" do
+      empty = %GameBoard{positions: ~w{nil nil nil nil}a, current_color: :black}
+
+      assert GameBoard.legality_move?(empty, 0)
+      assert GameBoard.legality_move?(empty, 1)
+      assert GameBoard.legality_move?(empty, 2)
+      assert GameBoard.legality_move?(empty, 3)
+    end
+
+    test "is move illegal when placing a stone on a point that's occupied" do
+      refute GameBoard.legality_move?(
+               %GameBoard{positions: ~w{white nil nil nil}a, current_color: :black},
+               0
+             )
+    end
+
+    test "is move illegal when placing a stone on a point that has no liberties" do
+      refute GameBoard.legality_move?(
+               %GameBoard{positions: ~w{nil white white nil nil}a, current_color: :black},
+               0
+             )
     end
   end
 end
