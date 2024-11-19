@@ -88,10 +88,7 @@ defmodule Go.GameBoard do
     false
   """
   @spec legality_move?(GameBoard.t(), integer()) :: boolean()
-  def legality_move?(
-        %GameBoard{positions: positions, current_color: current_color} = state,
-        index
-      ) do
+  def legality_move?(%GameBoard{positions: positions, current_color: current_color} = state, index) do
     %GameBoard{positions: tentative_positions} = GameBoard.place_on_board(state, index)
 
     Enum.at(positions, index) == nil and Enum.at(tentative_positions, index) == current_color
@@ -169,11 +166,7 @@ defmodule Go.GameBoard do
       }
   """
   @spec place_on_board(GameBoard.t(), integer()) :: GameBoard.t()
-  def place_on_board(
-        %GameBoard{positions: positions, current_color: current_color, captures: captures} =
-          state,
-        index
-      ) do
+  def place_on_board(%GameBoard{positions: positions, current_color: current_color, captures: captures} = state, index) do
     opponent_color = get_opponent_color(current_color)
 
     changes_positions = List.replace_at(positions, index, current_color)
