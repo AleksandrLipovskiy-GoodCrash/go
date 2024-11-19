@@ -27,6 +27,20 @@ defmodule GoWeb.GameBoardLive do
         <% end %>
       <% end %>
     </div>
+
+    <div class="history">
+      <%= if Game.has_history?(@game, @game.index + 1) do %>
+        <button phx-click="jump" phx-value-history={@game.index + 1}>Undo</button>
+      <% else %>
+        <button disabled="disabled">Undo</button>
+      <% end %>
+
+      <%= if Game.has_history?(@game, @game.index - 1) do %>
+        <button phx-click="jump" phx-value-history={@game.index - 1}>Redo</button>
+      <% else %>
+        <button disabled="disabled">Redo</button>
+      <% end %>
+    </div>
     """
   end
 
@@ -38,6 +52,12 @@ defmodule GoWeb.GameBoardLive do
 
   def handle_event("place", %{"index" => index}, socket) do
     new_game_state = Game.place(socket.assigns.game, String.to_integer(index))
+
+    {:noreply, assign(socket, game: new_game_state, state: Game.state(new_game_state))}
+  end
+
+  def handle_event("jump", %{"history" => history}, socket) do
+    new_game_state = Game.jump(socket.assigns.game, String.to_integer(history))
 
     {:noreply, assign(socket, game: new_game_state, state: Game.state(new_game_state))}
   end
